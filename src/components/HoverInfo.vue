@@ -1,5 +1,5 @@
 <template>
-  <div v-if='vm' class='item-tooltip' v-bind:style="{ left: vm.pos.x + 'px', top: vm.pos.y + 'px' }">
+  <div v-if='vm' class='item-tooltip' v-bind:style="{ left: x + 'px', top: y + 'px' }">
     <img :src='vm.thumbnail'/>
     <div class='tooltip-details'>
       <h4>{{vm.title}} <span class='subs'>
@@ -11,7 +11,21 @@
 
 <script>
 export default {
-  props: ['vm']
+  props: ['vm'],
+  computed: {
+    x() {
+      var vm = this.vm;
+      if (!vm.pos) return 0;
+      var x = vm.pos.x;
+      return Math.min(x, window.innerWidth - 330)
+    },
+    y() {
+      var vm = this.vm;
+      if (!vm.pos) return 0;
+      var y = vm.pos.y;
+      return Math.min(y, window.innerHeight - 90)
+    }
+  }
 }
 
 </script>
