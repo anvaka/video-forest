@@ -17,6 +17,7 @@ var bus = require('../models/bus.js');
 module.exports = createRenderer;
 
 function createRenderer(container, globalTree) {
+  var needsUpdate = true;
   var  uniforms;
   var objects = new Map();
   var tree; // rendered points quad tree, for hit test.
@@ -75,6 +76,7 @@ function createRenderer(container, globalTree) {
   return api;
 
   function updateOnMove() {
+    needsUpdate = true;
     updateVisibleRect();
     updateData(visibleRect);
 
@@ -122,6 +124,7 @@ function createRenderer(container, globalTree) {
   }
 
   function onWindowResize() {
+    needsUpdate = true;
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
 
@@ -196,7 +199,10 @@ function createRenderer(container, globalTree) {
 
   function frame(/* time */) {
     lastFrame = window.requestAnimationFrame(frame);
-    renderer.render(scene, camera);
+    if (needsUpdate) {
+      renderer.render(scene, camera);
+      needsUpdate = false;
+    }
   }
 
   function getVisibleRect() {
@@ -217,6 +223,7 @@ function createRenderer(container, globalTree) {
   }
 
   function append(name, chunk) {
+    needsUpdate = true;
     var remove = [];
     objects.forEach(function(oldChunk, name) {
       if (!rectAIntersectsB(visibleRect, oldChunk.rect) || // oldChunk is no longer visible
