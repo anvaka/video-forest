@@ -336,7 +336,7 @@ function createRenderer(container, globalTree) {
       scale: { value: window.innerHeight * 0.5 },
       texture: {
         type: 't',
-        value: THREE.ImageUtils.loadTexture(defaultTexture)
+        value: loadTexture(defaultTexture)
       }
     };
 
@@ -344,7 +344,8 @@ function createRenderer(container, globalTree) {
       uniforms: uniforms,
       vertexShader: vertexShader(),
       fragmentShader: fragmentShader(),
-      transparent: true
+      transparent: true,
+      depthTest: false
     });
 
     return material;
@@ -370,4 +371,10 @@ function x(p) {
 
 function y(p) {
   return p.y;
+}
+
+function loadTexture(path) {
+  var loader = new THREE.TextureLoader();
+  var texture = loader.load(path);
+  return texture;
 }
