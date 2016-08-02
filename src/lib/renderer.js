@@ -12,6 +12,9 @@ var rectAContainsB = require('./utils/rectAContainsB.js');
 var getGroup = require('../models/getGroup.js');
 var bus = require('../models/bus.js');
 
+var RENDER_QUAD_DEBUG = false;
+var appendDebugQuads = require('./utils/appendDebugQuads.js');
+
 module.exports = createRenderer;
 
 function createRenderer(container, globalTree) {
@@ -61,6 +64,9 @@ function createRenderer(container, globalTree) {
   container.addEventListener('mousedown', onMouseDown);
 
   var lastFrame = window.requestAnimationFrame(frame);
+  if (RENDER_QUAD_DEBUG) {
+    appendDebugQuads(globalTree, scene);
+  }
 
   return api;
 
@@ -368,3 +374,4 @@ function loadTexture(path) {
   var texture = loader.load(path);
   return texture;
 }
+
