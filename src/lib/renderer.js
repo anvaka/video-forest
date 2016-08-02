@@ -4,21 +4,19 @@ var threePanZoom = require('three.map.control');
 var eventify = require('ngraph.events');
 var _ = require('lodash');
 
-var request = require('./utils/request.js');
 var getQuad = require('./utils/getQuad.js');
 var collectPaths = require('./utils/collectPaths.js');
 var defaultTexture = require('./defaultTexture.js');
 var rectAIntersectsB = require('./utils/rectAIntersectsB.js');
 var rectAContainsB = require('./utils/rectAContainsB.js');
 var getGroup = require('../models/getGroup.js');
-var config = require('./config.js');
 var bus = require('../models/bus.js');
 
 module.exports = createRenderer;
 
 function createRenderer(container, globalTree) {
   var needsUpdate = true;
-  var  uniforms;
+  var uniforms;
   var objects = new Map();
   var tree; // rendered points quad tree, for hit test.
   var lastHover;
@@ -63,15 +61,6 @@ function createRenderer(container, globalTree) {
   container.addEventListener('mousedown', onMouseDown);
 
   var lastFrame = window.requestAnimationFrame(frame);
-
-  // TODO: this does not belong here
-  request(config.dataUrl + '/tree/tree.json', {responseType: 'json'}).then(function(jsonTree) {
-    globalTree = jsonTree;
-
-    return getQuad('0', globalTree).then(function (points) {
-      append('0', points);
-    });
-  })
 
   return api;
 
@@ -270,9 +259,9 @@ function createRenderer(container, globalTree) {
       var color = theme[group % theme.length];
 
       var colIdx = i * 3;
-      colors[colIdx + 0] = ((color & 0xff0000) >> 16)/255; //color.r; //p.x/16000 + 0.5;
-      colors[colIdx + 1] = ((color & 0x00ff00) >> 8)/255; //color.g; // p.y/16000 + 0.5;
-      colors[colIdx + 2] = ((color & 0x0000ff) >> 0)/255; //0.5;
+      colors[colIdx + 0] = ((color & 0xff0000) >> 16)/255;
+      colors[colIdx + 1] = ((color & 0x00ff00) >> 8)/255;
+      colors[colIdx + 2] = ((color & 0x0000ff) >> 0)/255
     })
 
     geometry.addAttribute('position', new THREE.BufferAttribute(positions, 2));
@@ -291,6 +280,7 @@ function createRenderer(container, globalTree) {
   }
 
   function updateQuadTree() {
+    // we build local quad tree for hit testing.
     var points = [];
     objects.forEach(function(object) {
       object.rect.points.forEach(function(point) {
