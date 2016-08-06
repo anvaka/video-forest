@@ -6,7 +6,7 @@ var THREE = require('three');
 
 function appendDebugQuads(tree, scene) {
   var jsPos = [];
-  var maxDepth = 5;
+  var maxDepth = 6;
   var rect = tree.rect;
 
   appendLayer(tree, rect, 0);

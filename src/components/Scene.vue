@@ -15,6 +15,7 @@ import HoverInfo from './HoverInfo.vue';
 import ChannelView from './ChannelView.vue';
 
 var youtubeClient = require('../lib/utils/youtubeClient.js')(request);
+var getLabel = require('../models/getLabel.js');
 
 var pendingChannelRequest;
 
@@ -36,21 +37,17 @@ export default {
       let self = this;
 
       this.renderer.on('click', function(p) {
-        var labels = getNativeModel().labels;
-        if (!labels || !p) {
-          return;
-        }
+        getLabel(p.id).then(channelId => {
+          if (channelId[0] === 'U' && channelId[1] === 'C') {
+            let playList = 'UU' + channelId.substr(2);
 
-        var channelId = labels[p.id];
-        if (channelId[0] === 'U' && channelId[1] === 'C') {
-          let playList = 'UU' + channelId.substr(2);
-
-          self.preview = {
-            url: 'https://www.youtube.com/embed/videoseries?list=' + playList + '&autoplay=1'
-          };
-        } else {
-          self.preview = null;
-        }
+            self.preview = {
+              url: 'https://www.youtube.com/embed/videoseries?list=' + playList + '&autoplay=1'
+            };
+          } else {
+            self.preview = null;
+          }
+        });
       })
 
       this.renderer.on('hover', function(p) {
@@ -59,26 +56,25 @@ export default {
           pendingChannelRequest = null;
         }
 
-        var labels = getNativeModel().labels;
-        if (!labels || !p) {
+        if (!p || typeof p.id === 'undefined') {
           self.tooltip = null;
           return;
         }
 
-        var channelId = labels[p.id];
-
-        pendingChannelRequest = debounce(function() {
-          youtubeClient.getChannelInfo(channelId).then(function(info) {
-            if (info) {
-              info.pos = p.pos;
-              self.tooltip = info;
-            } else {
-              // I have old data set. sometimes there is no channels
-              self.tooltip = null;
-            }
-          });
-        }, 300);
-        pendingChannelRequest();
+        getLabel(p.id).then(channelId => {
+          pendingChannelRequest = debounce(function() {
+            youtubeClient.getChannelInfo(channelId).then(function(info) {
+              if (info) {
+                info.pos = p.pos;
+                self.tooltip = info;
+              } else {
+                // I have old data set. sometimes there is no channels
+                self.tooltip = null;
+              }
+            });
+          }, 300);
+          pendingChannelRequest();
+        });
       });
     }
   },

@@ -8,7 +8,6 @@ var request = require('../lib/utils/request.js');
 
 var model = {
   groups: null,
-  labels: null,
   tree: null
 }
 
@@ -25,9 +24,5 @@ export function init() {
   request(config.dataUrl + '/groups.bin', {responseType: 'arraybuffer'}).then(function(g) {
     model.groups = new Int16Array(g);
     bus.fire('groups-ready');
-  });
-
-  request(config.dataUrl + '/labels.json', {responseType: 'json'}).then(function(data) {
-    model.labels = data;
   });
 }
