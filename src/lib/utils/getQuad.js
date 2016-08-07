@@ -5,7 +5,7 @@ var getRectFromName = require('./getRectFromName.js');
 module.exports = getQuad;
 
 function getQuad(name, tree) {
-  return request(config.dataUrl + 'tree/' + name + '.bin', {
+  return request(config.dataUrl + 'tree/positions/' + name + '.bin', {
     responseType: 'arraybuffer'
   }).then(function (points) {
     return parseQuad(points, name, tree);
@@ -24,6 +24,7 @@ function parseQuad(buffer, name, tree) {
     r = Math.max(5, r);
 
     points[i/4] = {
+      quadName: name,
       id: src[i],
       x: x,
       y: y,

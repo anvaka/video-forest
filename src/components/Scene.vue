@@ -37,7 +37,7 @@ export default {
       let self = this;
 
       this.renderer.on('click', function(p) {
-        getLabel(p.id).then(channelId => {
+        getLabel(p).then(channelId => {
           if (channelId[0] === 'U' && channelId[1] === 'C') {
             let playList = 'UU' + channelId.substr(2);
 
@@ -61,7 +61,7 @@ export default {
           return;
         }
 
-        getLabel(p.id).then(channelId => {
+        getLabel(p).then(channelId => {
           pendingChannelRequest = debounce(function() {
             youtubeClient.getChannelInfo(channelId).then(function(info) {
               if (info) {

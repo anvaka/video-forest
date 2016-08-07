@@ -1,40 +1,53 @@
+import getNativeModel from './getNativeModel.js';
+
 var Promise = require('bluebird');
 var request = require('../lib/utils/request.js');
 var config = require('../lib/config.js');
 
-var labelDataByFileName = Object.create(null);
-const labelsPerFile = 10000; // TODO: read from graph config?
+// TODO: This should be keyed by time, so that we remove old entries.
+var labelDataByQuadName = Object.create(null);
 
 module.exports = getLabel;
-var pendinRequest = 0;
+var pendingRequestId = 0;
 
-function getLabel(labelIndex) {
-  pendinRequest += 1;
-  if (pendinRequest > 100) {
-    pendinRequest = 0;
-  }
-  if (typeof labelIndex !== 'number') {
-    return;
+function getLabel(parsedQuad) {
+  var tree = getNativeModel().tree
+  if (!tree) {
+    return Promise.reject('Tree index is not loaded yet');
   }
 
-  var labelFileName = Math.floor(labelIndex / labelsPerFile);
-  var labelOffsetInFile = labelIndex % labelsPerFile;
+  pendingRequestId += 1;
+  if (pendingRequestId > 100) {
+    pendingRequestId = 0;
+  }
 
-  var cachedLabelData = labelDataByFileName[labelFileName];
+  var quadName = parsedQuad.quadName;
+  if (quadName === undefined) {
+    console.error(parsedQuad);
+    throw new Error('Missing quad name for quad');
+  }
+
+  var cachedLabelData = labelDataByQuadName[quadName];
   if (cachedLabelData) {
-    var label = cachedLabelData[labelOffsetInFile];
-    return Promise.resolve(label);
+    return resolveLabelInQuad(parsedQuad.id, cachedLabelData);
   }
 
-  var cachedRequest = pendinRequest;
+  var previousRequestId = pendingRequestId;
 
-  return getLabelFile(labelFileName).then(function(data) {
-    // TODO: This should be keyed by time, so that we remove old entries.
-    labelDataByFileName[labelFileName] = data;
-    if (pendinRequest === cachedRequest) {
-      return data[labelOffsetInFile];
+  return getLabelFile(quadName).then(function(pointIdToLabelId) {
+    labelDataByQuadName[quadName] = pointIdToLabelId;
+    if (pendingRequestId === previousRequestId) {
+      return resolveLabelInQuad(parsedQuad.id, pointIdToLabelId);
     }
   })
+
+  function resolveLabelInQuad(pointId, pointIdToLabelId) {
+    if (!pointIdToLabelId.hasOwnProperty(pointId)) {
+      throw new Error('Quad does not have ' + pointId);
+    }
+    var label = pointIdToLabelId[pointId];
+    return Promise.resolve(label);
+  }
 }
 
 function getLabelFile(labelFileName) {

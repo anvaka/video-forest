@@ -17,6 +17,7 @@ function getNativeModel() {
 
 export function init() {
   request(config.dataUrl + '/tree/tree.json', {responseType: 'json'}).then(function(jsonTree) {
+    // TOOD: this should be a binary format
     model.tree = jsonTree;
     bus.fire('tree-ready', jsonTree);
   })
