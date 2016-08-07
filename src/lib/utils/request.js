@@ -7,8 +7,23 @@ module.exports = request;
 
 function request(url, options) {
   if (!options) options = {};
+  var queue = [];
+  var activeCount = 0;
+  // iOS has problems with many open ajax requests, so we do not allow
+  // more than 5 concurrent requests.
+  var maxAllowed = 5;
 
   return new Promise(download);
+
+  function processNext() {
+    if (queue.length === 0) return;
+
+    if (activeCount < maxAllowed) {
+      var req = queue.shift();
+      req.send(null);
+      activeCount += 1;
+    }
+  }
 
   function download(resolve, reject) {
     var req = new window.XMLHttpRequest();
@@ -25,7 +40,10 @@ function request(url, options) {
     if (options.responseType) {
       req.responseType = options.responseType;
     }
-    req.send(null);
+
+    queue.push(req);
+    processNext();
+    return;
 
     function updateProgress(e) {
       if (e.lengthComputable) {
@@ -38,6 +56,8 @@ function request(url, options) {
     }
 
     function transferComplete() {
+      markActiveProcessed();
+
       if (req.status !== 200) {
         reject(`Unexpected status code ${req.status} when calling ${url}`);
         return;
@@ -52,11 +72,18 @@ function request(url, options) {
       resolve(response);
     }
 
+    function markActiveProcessed() {
+      activeCount -= 1;
+      window.setTimeout(processNext, 0)
+    }
+
     function transferFailed() {
+      markActiveProcessed();
       reject(`Failed to download ${url}`);
     }
 
     function transferCanceled() {
+      markActiveProcessed();
       reject(`Cancelled download of ${url}`);
     }
   }
