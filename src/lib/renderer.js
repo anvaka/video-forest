@@ -24,7 +24,7 @@ function createRenderer(container, globalTree) {
   var tree; // rendered points quad tree, for hit test.
   var lastHover;
   var pendingLoad = new Set();
-  var updateQuadTreeDebounced = _.debounce(updateQuadTree, 300);
+  var updateQuadTreeDebounced = _.debounce(updateQuadTree, 400);
 
   var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1500000);
 

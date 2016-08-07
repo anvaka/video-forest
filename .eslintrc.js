@@ -17,6 +17,7 @@ module.exports = {
     'semi': 0,
     'space-before-function-paren': 0,
     'no-multi-spaces': 0,
+    'no-unused-vars': 1,
     'space-infix-ops': 0,
     'space-in-parens': 0,
     'spaced-comment': 0,
