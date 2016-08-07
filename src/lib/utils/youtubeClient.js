@@ -14,7 +14,8 @@ function createClient(request) {
   function getChannelInfo(channelId) {
     return get('channels', {
       part: 'statistics,snippet',
-      id: channelId
+      id: channelId,
+      fields: 'items(snippet(description,thumbnails/default/url,title),statistics/subscriberCount)'
     }).then(function(response) {
       if (response.items && response.items.length) {
         return toChannelInfo(response.items[0]);
