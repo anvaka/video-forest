@@ -17,6 +17,7 @@
     "d3-quadtree": "^1.0.0",
     "lodash": "^4.14.1",
     "ngraph.events": "0.0.4",
+    "qs": "^6.2.1",
     "three": "^0.79.0",
     "three.map.control": "^1.2.0",
     "vue": "^1.0.21"

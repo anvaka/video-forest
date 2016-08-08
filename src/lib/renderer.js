@@ -11,6 +11,7 @@ var rectAIntersectsB = require('./utils/rectAIntersectsB.js');
 var rectAContainsB = require('./utils/rectAContainsB.js');
 var getGroup = require('../models/getGroup.js');
 var bus = require('../models/bus.js');
+var appConfig = require('./appConfig.js');
 
 var RENDER_QUAD_DEBUG = false;
 var appendDebugQuads = require('./utils/appendDebugQuads.js');
@@ -33,7 +34,8 @@ function createRenderer(container, globalTree) {
 
   var controls = threePanZoom(camera, container);
   controls.max = 1300000; // TODO: This should depend on rect
-  camera.position.z = controls.max;
+  updateCameraPositionFromHash()
+
   bus.on('groups-ready', onGroupsDownloaded);
 
   var visibleRect = {
@@ -62,6 +64,7 @@ function createRenderer(container, globalTree) {
   window.addEventListener('resize', onWindowResize, false);
   container.addEventListener('mousemove', onMouseMove);
   container.addEventListener('mousedown', onMouseDown);
+  appConfig.on('positionChanged', updateCameraPositionFromHash);
 
   var lastFrame = window.requestAnimationFrame(frame);
   if (RENDER_QUAD_DEBUG) {
@@ -70,12 +73,23 @@ function createRenderer(container, globalTree) {
 
   return api;
 
+  function updateCameraPositionFromHash() {
+    var storedCameraPosition = appConfig.getCameraPosition()
+
+    camera.position.x = storedCameraPosition.x
+    camera.position.y = storedCameraPosition.y
+    camera.position.z = storedCameraPosition.z
+    needsUpdate = true
+  }
+
   function updateOnMove() {
     needsUpdate = true;
     updateVisibleRect();
     updateData(visibleRect);
 
     removeHover();
+
+    appConfig.setCameraPosition(camera.position, /* silent = */ true)
 
     api.fire('positionChanged', visibleRect)
   }
