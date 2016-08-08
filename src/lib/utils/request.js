@@ -3,6 +3,8 @@
  */
 var Promise = require('bluebird');
 
+var responseCache = Object.create(null);
+
 module.exports = request;
 
 function request(url, options) {
@@ -12,6 +14,11 @@ function request(url, options) {
   // iOS has problems with many open ajax requests, so we do not allow
   // more than 5 concurrent requests.
   var maxAllowed = 5;
+
+  var cachedResponse = responseCache[url];
+  if (cachedResponse) {
+    return Promise.resolve(cachedResponse);
+  }
 
   return new Promise(download);
 
@@ -69,6 +76,7 @@ function request(url, options) {
         response = JSON.parse(response);
       }
 
+      responseCache[url] = response;
       resolve(response);
     }
 
