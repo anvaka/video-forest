@@ -33,7 +33,6 @@ function collectPaths(cameraRect,  tree) {
       var quad = queue.shift();
       var currentDepth = quad.path.length;
       if (currentDepth > depth) continue;
-      if (!rectAIntersectsB(cameraRect, quad)) continue;
 
       if (currentDepth === depth) {
         // We found a candidate:
