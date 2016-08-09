@@ -51,7 +51,7 @@ function getLabel(parsedQuad) {
 }
 
 function getLabelFile(labelFileName) {
-  var path = config.dataUrl + '/tree/labels/';
+  var path = config.dataUrl + 'tree/labels/';
   return request(path + labelFileName + '.json', {
     responseType: 'json'
   });

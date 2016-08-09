@@ -17,12 +17,12 @@ function getNativeModel() {
 }
 
 export function init() {
-  request(config.dataUrl + '/tree/tree.bin', {responseType: 'arraybuffer'}).then(function(treeBuffer) {
+  request(config.dataUrl + 'tree/tree.bin', {responseType: 'arraybuffer'}).then(function(treeBuffer) {
     model.tree = parseTree(treeBuffer);
     bus.fire('tree-ready', model.tree);
   })
 
-  request(config.dataUrl + '/groups.bin', {responseType: 'arraybuffer'}).then(function(g) {
+  request(config.dataUrl + 'groups.bin', {responseType: 'arraybuffer'}).then(function(g) {
     model.groups = new Int16Array(g);
     bus.fire('groups-ready');
   });
