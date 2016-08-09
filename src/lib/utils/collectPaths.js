@@ -14,13 +14,14 @@ function collectPaths(cameraRect,  tree) {
     path: '0',
     root: tree
   }];
-  var dx = quadRect.right - quadRect.left;
-  var camDx = Math.max(cameraRect.right - cameraRect.left, cameraRect.bottom - cameraRect.top);
+  var quadTreeSize = quadRect.right - quadRect.left;
+  var cameraRectSize = Math.max(cameraRect.right - cameraRect.left, cameraRect.bottom - cameraRect.top);
 
-  var level = dx < camDx ? 2 : 3;
-  while (dx/2 > camDx) {
+  // we find the largest level that fully lies inside camera rectangle
+  var level = 1;
+  while (quadTreeSize/2 > cameraRectSize) {
     level += 1;
-    dx = dx/2;
+    quadTreeSize /= 2;
   }
 
   traverse(level);

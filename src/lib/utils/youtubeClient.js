@@ -46,7 +46,6 @@ function toChannelInfo(response) {
   }
   var result = Object.assign(info, response.statistics);
   result.subscribers = formatNumber(result.subscriberCount);
-  console.log(result.subscribers);
 
   return result;
 }
