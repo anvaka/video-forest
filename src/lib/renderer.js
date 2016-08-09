@@ -25,7 +25,8 @@ function createRenderer(container, globalTree) {
   var tree; // rendered points quad tree, for hit test.
   var lastHover;
   var pendingLoad = new Set();
-  var updateQuadTreeDebounced = _.debounce(updateQuadTree, 400);
+  var updateInputQuadTreeDebounced = _.debounce(updateInputQuadTree, 400);
+  var updateDataDebounced = _.throttle(updateData, 400);
 
   var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1500000);
 
@@ -36,7 +37,7 @@ function createRenderer(container, globalTree) {
   controls.max = 1300000; // TODO: This should depend on rect
   updateCameraPositionFromHash()
 
-  bus.on('groups-ready', onGroupsDownloaded);
+  bus.on('groups-ready', updateData);
 
   var visibleRect = {
     left: 0,
@@ -85,13 +86,10 @@ function createRenderer(container, globalTree) {
   function updateOnMove() {
     needsUpdate = true;
     updateVisibleRect();
-    updateData(visibleRect);
+    updateDataDebounced();
 
     removeHover();
-
     appConfig.setCameraPosition(camera.position, /* silent = */ true)
-
-    api.fire('positionChanged', visibleRect)
   }
 
   function removeHover() {
@@ -139,10 +137,9 @@ function createRenderer(container, globalTree) {
 
     uniforms.scale.value = window.innerHeight * 0.5;
 
-    renderer.setSize( window.innerWidth, window.innerHeight );
+    renderer.setSize(window.innerWidth, window.innerHeight);
 
     updateVisibleRect();
-    api.fire('positionChanged', visibleRect)
   }
 
   function updateVisibleRect() {
@@ -159,13 +156,13 @@ function createRenderer(container, globalTree) {
     visibleRect.bottom = center.y + height/2;
   }
 
-  function updateData(cameraRect) {
+  function updateData() {
     // TODO: This may need be refactored.
     var paths = collectPaths({
-      left: cameraRect.left,
-      right: cameraRect.right,
-      top: cameraRect.top,
-      bottom: cameraRect.bottom
+      left: visibleRect.left,
+      right: visibleRect.right,
+      top: visibleRect.top,
+      bottom: visibleRect.bottom
     }, globalTree);
 
     var chunksToLoad = [];
@@ -199,11 +196,6 @@ function createRenderer(container, globalTree) {
     controls.dispose();
     container.removeEventListener('mousemove', onMouseMove);
     container.removeEventListener('mousedown', onMouseDown);
-    bus('groups-ready', onGroupsDownloaded)
-  }
-
-  function onGroupsDownloaded() {
-    updateData(visibleRect)
   }
 
   function frame(/* time */) {
@@ -296,10 +288,10 @@ function createRenderer(container, globalTree) {
     });
 
     scene.add(particleSystem);
-    updateQuadTreeDebounced();
+    updateInputQuadTreeDebounced();
   }
 
-  function updateQuadTree() {
+  function updateInputQuadTree() {
     // we build local quad tree for hit testing.
     var points = [];
     objects.forEach(function(object) {
@@ -388,4 +380,3 @@ function loadTexture(path) {
   var texture = loader.load(path);
   return texture;
 }
-
