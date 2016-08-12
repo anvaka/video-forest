@@ -45,9 +45,13 @@ function binaryDecodeTree(uint32Buffer) {
   if (binaryStream.length === 0) return;
   var root = {};
 
-  readNode(0, root);
+  var bitOffset = readNode(0, root);
 
-  return root;
+  return {
+    root: root,
+    // ceil, because readNode() can consume not complete word
+    offsetInWord: Math.ceil(bitOffset/32)
+  }
 
   function readNode(bitOffset, node) {
     var i;
