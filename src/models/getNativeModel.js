@@ -3,6 +3,8 @@ export default getNativeModel;
 var bus = require('./bus.js');
 var config = require('../lib/config.js');
 
+var getRectFromName = require('./lib/getRectFromName.js');
+
 // TODO: this probably doesn't belong here
 var request = require('../lib/utils/request.js');
 var binaryDecodeTree = require('./lib/binaryDumpTree.js').binaryDecodeTree;
@@ -46,26 +48,40 @@ function parseTree(buffer) {
     bottom: rectArray[3]
   };
 
-  root.getStorageFile = getStorageFile;
+  root.getQuadInfo = getQuadInfo;
 
   return root;
 
-  function getStorageFile(nodePath) {
+  function getQuadInfo(nodePath) {
     var current = terminalTree;
+    var storageFile = nodePath;
+    var isTerminal = false;
+
     var currentName = '0';
     for (var i = 1; i < nodePath.length; ++i) {
       var quadName = nodePath[i];
       currentName += quadName;
       current = current[quadName];
-      if (!current) return nodePath; // not a terminal node
+
+      if (!current) {
+        isTerminal = false;
+        break;
+      } // not a terminal node
 
       if (current.terminal) {
-        debugger;
-        return currentName
+        // this is terminal node, and its data is stored in a different path:
+        isTerminal = true;
+        storageFile = currentName;
+        break;
       }
     }
 
-    return nodePath;
+    return {
+      name: nodePath,
+      isTerminal: isTerminal,
+      storageFile: storageFile,
+      rect: getRectFromName(nodePath, root.rect)
+    };
   }
 }
 

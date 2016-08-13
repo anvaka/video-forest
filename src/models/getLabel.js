@@ -34,7 +34,15 @@ function getLabel(parsedQuad) {
 
   var previousRequestId = pendingRequestId;
 
-  return getLabelFile(quadName).then(function(pointIdToLabelId) {
+  var quadInfo = tree.getQuadInfo(quadName);
+  return getLabelFile(quadInfo.storageFile).then(function(pointIdToLabelId) {
+    if (quadInfo.isTerminal) {
+      pointIdToLabelId = pointIdToLabelId[quadName]
+      if (!pointIdToLabelId) {
+        throw new Error('Terminal quad ' + quadInfo.storageFile + ' does not contain ' + quadName);
+      }
+    }
+
     labelDataByQuadName[quadName] = pointIdToLabelId;
     if (pendingRequestId === previousRequestId) {
       return resolveLabelInQuad(parsedQuad.id, pointIdToLabelId);
@@ -45,6 +53,7 @@ function getLabel(parsedQuad) {
     if (!pointIdToLabelId.hasOwnProperty(pointId)) {
       throw new Error('Quad does not have ' + pointId);
     }
+
     var label = pointIdToLabelId[pointId];
     return Promise.resolve(label);
   }
