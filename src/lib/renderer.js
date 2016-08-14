@@ -21,10 +21,10 @@ module.exports = createRenderer;
 function createRenderer(container, globalTree) {
   var needsUpdate = true;
   var uniforms;
-  var objects = new Map();
+  var currentChunks = new Map();
   var tree; // rendered points quad tree, for hit test.
   var lastHover;
-  var pendingLoad = new Set();
+  var pendingLoad = new Map();
   var updateInputQuadTreeDebounced = _.debounce(updateInputQuadTree, 400);
   var updateDataDebounced = _.throttle(updateData, 400);
 
@@ -127,7 +127,7 @@ function createRenderer(container, globalTree) {
   }
 
   function getCurrentChunks() {
-    return objects;
+    return currentChunks;
   }
 
   function onWindowResize() {
@@ -165,29 +165,25 @@ function createRenderer(container, globalTree) {
       bottom: visibleRect.bottom
     }, globalTree);
 
-    var chunksToLoad = [];
-    var currentChunks = objects;
-
-    currentChunks.forEach(function(value, key) {
-      if (!paths.has(key)) pendingLoad.delete(key);
+    pendingLoad.forEach(function(value, key) {
+      if (!paths.has(key)) {
+        // TODO: Should I cancel xhr?
+        pendingLoad.delete(key);
+      }
     });
 
-    paths.forEach(function(path) {
-      if (currentChunks.has(path)) return;
-      if (pendingLoad.has(path)) return;
+    paths.forEach(function(chunk) {
+      if (currentChunks.has(chunk)) return;
+      if (pendingLoad.has(chunk)) return;
 
-      chunksToLoad.push(path);
-    });
-
-    chunksToLoad.forEach(function(chunk) {
-      pendingLoad.add(chunk);
-
-      getQuad(chunk, globalTree).then(function(points) {
+      var downloadPromise = getQuad(chunk, globalTree).then(function(points) {
         if (pendingLoad.has(chunk)) {
-          append(chunk, points);
           pendingLoad.delete(chunk);
+          append(chunk, points);
         }
       });
+
+      pendingLoad.set(chunk, downloadPromise);
     });
   }
 
@@ -226,7 +222,7 @@ function createRenderer(container, globalTree) {
   function append(name, chunk) {
     needsUpdate = true;
     var remove = [];
-    objects.forEach(function(oldChunk, name) {
+    currentChunks.forEach(function(oldChunk, name) {
       if (!rectAIntersectsB(visibleRect, oldChunk.rect) || // oldChunk is no longer visible
           rectAContainsB(oldChunk.rect, chunk) || // We've got higher-res chunk (zoom in)
           rectAContainsB(chunk, oldChunk.rect) // lower res chunk was added (zoom out)
@@ -238,14 +234,14 @@ function createRenderer(container, globalTree) {
     });
 
     remove.forEach(function(name) {
-      objects.delete(name);
+      currentChunks.delete(name);
     });
 
     if (!rectAIntersectsB(visibleRect, chunk)) {
       return;
     }
 
-    if (objects.has(name)) {
+    if (currentChunks.has(name)) {
       console.warn('Requested to render chunk, that is already rendered: ', name);
       return;
     }
@@ -282,7 +278,7 @@ function createRenderer(container, globalTree) {
 
     var particleSystem = new THREE.Points(geometry, shaderMaterial);
     particleSystem.frustumCulled = false;
-    objects.set(name, {
+    currentChunks.set(name, {
       particleSystem: particleSystem,
       rect: chunk
     });
@@ -294,7 +290,7 @@ function createRenderer(container, globalTree) {
   function updateInputQuadTree() {
     // we build local quad tree for hit testing.
     var points = [];
-    objects.forEach(function(object) {
+    currentChunks.forEach(function(object) {
       object.rect.points.forEach(function(point) {
         points.push(point);
       });
