@@ -94,10 +94,8 @@ function createRenderer(container, globalTree) {
   }
 
   function removeHover() {
-    if (lastHover !== undefined) {
-      lastHover = undefined;
-      api.fire('hover', undefined);
-    }
+    lastHover = undefined;
+    api.fire('hover', undefined);
   }
 
   function onMouseMove(e) {
@@ -105,6 +103,11 @@ function createRenderer(container, globalTree) {
 
     var pos = getModelPosFromScreen(e.clientX, e.clientY);
     var dat = tree.find(pos.x, pos.y, 30);
+    if (!dat) {
+      removeHover()
+      return;
+    }
+
     if (dat !== lastHover) {
       var hoverEvent = Object.assign({
         pos: {
@@ -112,6 +115,7 @@ function createRenderer(container, globalTree) {
           y: e.clientY
         }
       }, dat)
+      console.log(+new Date(), 'hover fire', dat)
       api.fire('hover', hoverEvent);
       lastHover = dat;
     }

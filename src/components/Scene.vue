@@ -17,8 +17,6 @@ import ChannelView from './ChannelView.vue';
 var youtubeClient = require('../lib/utils/youtubeClient.js')(request);
 var getLabel = require('../models/getLabel.js');
 
-var pendingChannelRequest;
-
 export default {
   ready() {
     bus.on('tree-ready', this.treeDownloaded, this)
@@ -50,11 +48,10 @@ export default {
         });
       })
 
-      this.renderer.on('hover', function(p) {
-        if (pendingChannelRequest) {
-          pendingChannelRequest.cancel();
-          pendingChannelRequest = null;
-        }
+      this.renderer.on('hover', debounce(onHover, 300));
+
+      function onHover(p) {
+        console.log(+new Date(), 'hover handler', p)
 
         if (!p || typeof p.id === 'undefined') {
           self.tooltip = null;
@@ -62,20 +59,17 @@ export default {
         }
 
         getLabel(p).then(channelId => {
-          pendingChannelRequest = debounce(function() {
-            youtubeClient.getChannelInfo(channelId).then(function(info) {
-              if (info) {
-                info.pos = p.pos;
-                self.tooltip = info;
-              } else {
-                // I have old data set. sometimes there is no channels
-                self.tooltip = null;
-              }
-            });
-          }, 300);
-          pendingChannelRequest();
+          youtubeClient.getChannelInfo(channelId).then(function(info) {
+            if (info) {
+              info.pos = p.pos;
+              self.tooltip = info;
+            } else {
+              // I have old data set. sometimes there is no channels
+              self.tooltip = null;
+            }
+          });
         });
-      });
+      }
     }
   },
 
