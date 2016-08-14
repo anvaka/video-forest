@@ -16,6 +16,8 @@ var RENDER_QUAD_DEBUG = false;
 var appendDebugQuads = require('./utils/appendDebugQuads.js');
 var createDownloadManager = require('./utils/quadDownloadManager.js');
 
+var theme = [0x00CFFB, 0xFF441E, 0xff9900, 0x1AF850, 0x990099, 0x0099c6, 0xdd4477, 0x66aa00, 0xb82e2e, 0x55A8F8, 0x994499, 0x22aa99, 0xaaaa11, 0x7A3FF5, 0xe67300, 0xFAA900, 0xE741EB, 0x5BFAAC, 0x5574a6, 0xFFF68C];
+
 module.exports = createRenderer;
 
 function createRenderer(container, globalTree) {
@@ -37,7 +39,7 @@ function createRenderer(container, globalTree) {
   controls.max = 1300000; // TODO: This should depend on rect
   updateCameraPositionFromHash()
 
-  bus.on('groups-ready', downloadQuadsInVisibleArea);
+  bus.on('groups-ready', updateColors);
 
   var visibleRect = {
     left: 0,
@@ -238,8 +240,6 @@ function createRenderer(container, globalTree) {
     var sizes = new Float32Array(pointsCount);
     var colors = new Float32Array(pointsCount * 3);
 
-    var theme = [0x00CFFB, 0xFF441E, 0xff9900, 0x1AF850, 0x990099, 0x0099c6, 0xdd4477, 0x66aa00, 0xb82e2e, 0x55A8F8, 0x994499, 0x22aa99, 0xaaaa11, 0x7A3FF5, 0xe67300, 0xFAA900, 0xE741EB, 0x5BFAAC, 0x5574a6, 0xFFF68C];
-
     points.forEach(function(p, i) {
       var idx = i * 2;
       positions[idx] = p.x;
@@ -268,6 +268,29 @@ function createRenderer(container, globalTree) {
 
     scene.add(particleSystem);
     updateInputQuadTreeDebounced();
+  }
+
+  function updateColors() {
+    currentChunks.forEach(chunk => {
+      var {particleSystem} = chunk;
+      var colorAttribute = particleSystem.geometry.attributes.color;
+      colorAttribute.needsUpdate = true;
+
+      var colors = colorAttribute.array;
+
+      for (var i = 0; i < colors.length; i += 3) {
+        var idx = i / 3;
+        var nodeId = chunk.rect.points[idx].id;
+
+        var group = getGroup(nodeId);
+        var color = theme[group % theme.length];
+
+        colors[i + 0] = ((color & 0xff0000) >> 16)/255;
+        colors[i + 1] = ((color & 0x00ff00) >> 8)/255;
+        colors[i + 2] = ((color & 0x0000ff) >> 0)/255
+      }
+    });
+    needsUpdate = true;
   }
 
   function updateInputQuadTree() {
