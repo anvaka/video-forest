@@ -4,8 +4,7 @@ var threePanZoom = require('three.map.control');
 var eventify = require('ngraph.events');
 var _ = require('lodash');
 
-var getQuad = require('./utils/getQuad.js');
-var collectPaths = require('./utils/collectPaths.js');
+var collectQuadsInVisibleRect = require('./utils/collectPaths.js');
 var defaultTexture = require('./defaultTexture.js');
 var rectAIntersectsB = require('./utils/rectAIntersectsB.js');
 var rectAContainsB = require('./utils/rectAContainsB.js');
@@ -15,6 +14,7 @@ var appConfig = require('./appConfig.js');
 
 var RENDER_QUAD_DEBUG = false;
 var appendDebugQuads = require('./utils/appendDebugQuads.js');
+var createDownloadManager = require('./utils/quadDownloadManager.js');
 
 module.exports = createRenderer;
 
@@ -24,9 +24,9 @@ function createRenderer(container, globalTree) {
   var currentChunks = new Map();
   var tree; // rendered points quad tree, for hit test.
   var lastHover;
-  var pendingLoad = new Map();
+  var quadDownloadManager = createDownloadManager(appendQuad, globalTree);
   var updateInputQuadTreeDebounced = _.debounce(updateInputQuadTree, 400);
-  var updateDataDebounced = _.throttle(updateData, 400);
+  var updateDataDebounced = _.throttle(downloadQuadsInVisibleArea, 400);
 
   var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1500000);
 
@@ -37,7 +37,7 @@ function createRenderer(container, globalTree) {
   controls.max = 1300000; // TODO: This should depend on rect
   updateCameraPositionFromHash()
 
-  bus.on('groups-ready', updateData);
+  bus.on('groups-ready', downloadQuadsInVisibleArea);
 
   var visibleRect = {
     left: 0,
@@ -51,7 +51,6 @@ function createRenderer(container, globalTree) {
   var shaderMaterial = createParticleMaterial();
 
   var api = eventify({
-    append: append,
     getVisibleRect: getVisibleRect,
     getCurrentChunks: getCurrentChunks,
     getModelPosFromScreen: getModelPosFromScreen,
@@ -71,7 +70,7 @@ function createRenderer(container, globalTree) {
   }
 
   updateVisibleRect();
-  updateData();
+  downloadQuadsInVisibleArea();
 
   return api;
 
@@ -161,35 +160,13 @@ function createRenderer(container, globalTree) {
     visibleRect.bottom = center.y + height/2;
   }
 
-  function updateData() {
-    // TODO: This may need be refactored.
-    var paths = collectPaths({
-      left: visibleRect.left,
-      right: visibleRect.right,
-      top: visibleRect.top,
-      bottom: visibleRect.bottom
-    }, globalTree);
+  function downloadQuadsInVisibleArea() {
+    var visibleQuads = collectQuadsInVisibleRect(visibleRect, globalTree);
+    visibleQuads.forEach(function(quadName) {
+      if (currentChunks.has(quadName)) visibleQuads.delete(quadName)
+    })
 
-    pendingLoad.forEach(function(value, key) {
-      if (!paths.has(key)) {
-        // TODO: Should I cancel xhr?
-        pendingLoad.delete(key);
-      }
-    });
-
-    paths.forEach(function(chunk) {
-      if (currentChunks.has(chunk)) return;
-      if (pendingLoad.has(chunk)) return;
-
-      var downloadPromise = getQuad(chunk, globalTree).then(function(points) {
-        if (pendingLoad.has(chunk)) {
-          pendingLoad.delete(chunk);
-          append(chunk, points);
-        }
-      });
-
-      pendingLoad.set(chunk, downloadPromise);
-    });
+    quadDownloadManager.queueDownload(visibleQuads);
   }
 
   function dispose() {
@@ -224,8 +201,9 @@ function createRenderer(container, globalTree) {
     }
   }
 
-  function append(name, chunk) {
+  function appendQuad(name, chunk) {
     needsUpdate = true;
+
     var remove = [];
     currentChunks.forEach(function(oldChunk, name) {
       if (!rectAIntersectsB(visibleRect, oldChunk.rect) || // oldChunk is no longer visible

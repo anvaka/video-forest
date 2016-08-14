@@ -35,7 +35,7 @@ function collectPaths(cameraRect,  tree) {
       if (currentDepth > depth) continue;
 
       if (currentDepth === depth) {
-        // We found a candidate:
+        // We found a candidate. It's at the same depth as camera
         paths.add(quad.path);
         continue;
       }

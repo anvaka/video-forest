@@ -4,17 +4,15 @@ var quadNameFromBinary = require('../../models/lib/binaryQuadName.js').decodeQua
 
 module.exports = getQuad;
 
-function getQuad(name, tree) {
-  var quadInfo = tree.getQuadInfo(name);
-
+function getQuad(quadInfo) {
   return request(config.dataUrl + 'tree/positions/' + quadInfo.storageFile + '.bin', {
     responseType: 'arraybuffer'
   }).then(function (buffer) {
-    return parseQuad(buffer, quadInfo, tree);
+    return parseQuad(buffer, quadInfo);
   });
 }
 
-function parseQuad(buffer, quadInfo, tree) {
+function parseQuad(buffer, quadInfo) {
   var src = new Int32Array(buffer);
   var points;
 
