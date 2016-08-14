@@ -60,8 +60,6 @@ function createRenderer(container, globalTree) {
 
   controls.on('change', updateOnMove);
 
-  updateVisibleRect();
-
   window.addEventListener('resize', onWindowResize, false);
   container.addEventListener('mousemove', onMouseMove);
   container.addEventListener('mousedown', onMouseDown);
@@ -71,6 +69,9 @@ function createRenderer(container, globalTree) {
   if (RENDER_QUAD_DEBUG) {
     appendDebugQuads(globalTree, scene);
   }
+
+  updateVisibleRect();
+  updateData();
 
   return api;
 
