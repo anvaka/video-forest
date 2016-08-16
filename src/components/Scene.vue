@@ -48,7 +48,7 @@ export default {
         });
       })
 
-      this.renderer.on('hover', debounce(onHover, 300));
+      this.renderer.on('hover', debounce(onHover, 100));
 
       function onHover(p) {
         console.log(+new Date(), 'hover handler', p)
