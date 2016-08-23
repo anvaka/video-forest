@@ -30,13 +30,14 @@ function createRenderer(container, globalTree) {
   var updateInputQuadTreeDebounced = _.debounce(updateInputQuadTree, 400);
   var updateDataDebounced = _.throttle(downloadQuadsInVisibleArea, 400);
 
-  var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1500000);
+  var max = globalTree.rect.right - globalTree.rect.left;
+  var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, max);
 
   var scene = new THREE.Scene();
   scene.add(camera);
 
   var controls = threePanZoom(camera, container);
-  controls.max = 1300000; // TODO: This should depend on rect
+  controls.max = max;
   updateCameraPositionFromHash()
 
   bus.on('groups-ready', updateColors);
