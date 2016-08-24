@@ -12,7 +12,8 @@ var decodeQuadNameFromBinary = require('./lib/binaryQuadName.js').decodeQuadName
 
 var model = {
   groups: null,
-  tree: null
+  tree: null,
+  links: null
 }
 
 function getNativeModel() {
@@ -29,6 +30,40 @@ export function init() {
     model.groups = new Int16Array(g);
     bus.fire('groups-ready');
   });
+
+  request(config.dataUrl + 'links.bin', {responseType: 'arraybuffer'}).then(function(l) {
+    model.links = parseLinks(l);
+    bus.fire('links-ready');
+  });
+}
+
+export function forEachLink(nodeId, callback) {
+  if (!model.links) return
+
+  var outLinks = model.links.get(nodeId);
+  if (!outLinks) return;
+
+  outLinks.forEach(callback);
+}
+
+function parseLinks(linksBuffer) {
+  var model = new Map();
+  var lastArray;
+
+  var links = new Int32Array(linksBuffer);
+  for (var i = 0; i < links.length; ++i) {
+    var link = links[i];
+    if (link < 0) {
+      var srcIndex = -link - 1;
+      lastArray = [];
+      model.set(srcIndex, lastArray);
+    } else {
+      var toNode = link - 1;
+      lastArray.push(toNode);
+    }
+  }
+
+  return model;
 }
 
 function parseTree(buffer) {

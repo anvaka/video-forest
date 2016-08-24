@@ -1,3 +1,5 @@
+import { forEachLink } from '../models/getNativeModel.js';
+
 var THREE = require('three');
 var createQuadTree = require('d3-quadtree').quadtree;
 var threePanZoom = require('three.map.control');
@@ -24,10 +26,14 @@ function createRenderer(container, globalTree) {
   var needsUpdate = true;
   var uniforms;
   var currentChunks = new Map();
+  var visiblePoints = new Map();
+  var linkMesh;
+
   var tree; // rendered points quad tree, for hit test.
   var lastHover;
   var quadDownloadManager = createDownloadManager(appendQuad, globalTree);
   var updateInputQuadTreeDebounced = _.debounce(updateInputQuadTree, 400);
+  var updateLinksDebounced = _.debounce(updateLinks, 400);
   var updateDataDebounced = _.throttle(downloadQuadsInVisibleArea, 400);
 
   var max = globalTree.rect.right - globalTree.rect.left;
@@ -41,6 +47,9 @@ function createRenderer(container, globalTree) {
   updateCameraPositionFromHash()
 
   bus.on('groups-ready', updateColors);
+  bus.on('links-ready', () => {
+    needsUpdate = true;
+  });
 
   var visibleRect = {
     left: 0,
@@ -214,8 +223,13 @@ function createRenderer(container, globalTree) {
           rectAContainsB(chunk, oldChunk.rect) // lower res chunk was added (zoom out)
          ) {
         remove.push(name);
+
         scene.remove(oldChunk.particleSystem);
         oldChunk.particleSystem.geometry.dispose();
+
+        oldChunk.rect.points.forEach(p => {
+          visiblePoints.delete(p.id)
+        });
       }
     });
 
@@ -232,6 +246,18 @@ function createRenderer(container, globalTree) {
       return;
     }
 
+    var particleSystem = renderNodes(chunk);
+
+    currentChunks.set(name, {
+      particleSystem,
+      rect: chunk
+    });
+
+    updateInputQuadTreeDebounced();
+    // updateLinksDebounced();
+  }
+
+  function renderNodes(chunk) {
     var points = chunk.points;
 
     var geometry = new THREE.BufferGeometry();
@@ -246,6 +272,8 @@ function createRenderer(container, globalTree) {
       positions[idx] = p.x;
       positions[idx + 1] = p.y;
       sizes[i] = p.r;
+
+      visiblePoints.set(p.id, p);
 
       var group = getGroup(p.id);
       var color = theme[group % theme.length];
@@ -262,13 +290,10 @@ function createRenderer(container, globalTree) {
 
     var particleSystem = new THREE.Points(geometry, shaderMaterial);
     particleSystem.frustumCulled = false;
-    currentChunks.set(name, {
-      particleSystem: particleSystem,
-      rect: chunk
-    });
 
     scene.add(particleSystem);
-    updateInputQuadTreeDebounced();
+
+    return particleSystem;
   }
 
   function updateColors() {
@@ -292,6 +317,63 @@ function createRenderer(container, globalTree) {
       }
     });
     needsUpdate = true;
+  }
+
+  function updateLinks() {
+    var jsPos = [];
+    var jsColors = [];
+    var width = (visibleRect.right - visibleRect.left);
+
+    var maxLength = width * 0.1;
+    maxLength *= maxLength;
+    minLength *= minLength;
+
+    currentChunks.forEach(function(chunk) {
+      chunk.rect.points.forEach(function(p, i) {
+        forEachLink(p.id, function(other) {
+          addLine(p.id, other)
+        })
+      })
+    })
+
+    var positions = new Float32Array(jsPos);
+    var colors = new Float32Array(jsColors);
+
+    var geometry = new THREE.BufferGeometry();
+    var material = new THREE.LineBasicMaterial({
+      vertexColors: THREE.VertexColors,
+      blending: THREE.AdditiveBlending,
+      opacity: 0.5,
+      transparent: true
+    });
+
+    geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.addAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    geometry.computeBoundingSphere();
+
+    if (linkMesh) {
+      scene.remove(linkMesh);
+      linkMesh.geometry.dispose();
+    }
+
+    linkMesh = new THREE.Line(geometry, material, THREE.LinePieces);
+
+    scene.add(linkMesh);
+
+    function addLine(fromId, toId) {
+      var from = visiblePoints.get(fromId);
+      var to = visiblePoints.get(toId);
+
+      if (!from || !to) return;
+      var dx = from.x - to.x;
+      var dy = from.y - to.y;
+      var distS = dx * dx + dy * dy;
+      if (distS > maxLength) return;
+
+      jsPos.push(from.x, from.y, 0, to.x, to.y, 0);
+      jsColors.push(1, 1, 1, 1, 1, 1); // /*from.x / r + 0.5, from.y / r + 0.5, 0.5, to.x / r + 0.5, to.y / r + 0.5, 0.5*/)
+    }
   }
 
   function updateInputQuadTree() {
