@@ -1,4 +1,4 @@
-import { forEachLink } from '../models/getNativeModel.js';
+import {forEachLink} from '../models/getNativeModel.js';
 
 var THREE = require('three');
 var createQuadTree = require('d3-quadtree').quadtree;
@@ -33,7 +33,6 @@ function createRenderer(container, globalTree) {
   var lastHover;
   var quadDownloadManager = createDownloadManager(appendQuad, globalTree);
   var updateInputQuadTreeDebounced = _.debounce(updateInputQuadTree, 400);
-  var updateLinksDebounced = _.debounce(updateLinks, 400);
   var updateDataDebounced = _.throttle(downloadQuadsInVisibleArea, 400);
 
   var max = globalTree.rect.right - globalTree.rect.left;
@@ -48,6 +47,7 @@ function createRenderer(container, globalTree) {
 
   bus.on('groups-ready', updateColors);
   bus.on('links-ready', () => {
+    renderLinks();
     needsUpdate = true;
   });
 
@@ -254,7 +254,6 @@ function createRenderer(container, globalTree) {
     });
 
     updateInputQuadTreeDebounced();
-    // updateLinksDebounced();
   }
 
   function renderNodes(chunk) {
@@ -319,22 +318,16 @@ function createRenderer(container, globalTree) {
     needsUpdate = true;
   }
 
-  function updateLinks() {
+  function renderLinks() {
     var jsPos = [];
     var jsColors = [];
     var width = (visibleRect.right - visibleRect.left);
+    var max = 16868928;
 
-    var maxLength = width * 0.1;
+    var maxLength = 300;
     maxLength *= maxLength;
-    minLength *= minLength;
 
-    currentChunks.forEach(function(chunk) {
-      chunk.rect.points.forEach(function(p, i) {
-        forEachLink(p.id, function(other) {
-          addLine(p.id, other)
-        })
-      })
-    })
+    forEachLink(addLine);
 
     var positions = new Float32Array(jsPos);
     var colors = new Float32Array(jsColors);
@@ -356,20 +349,17 @@ function createRenderer(container, globalTree) {
       scene.remove(linkMesh);
       linkMesh.geometry.dispose();
     }
-
+    console.log(jsPos.length);
     linkMesh = new THREE.Line(geometry, material, THREE.LinePieces);
 
     scene.add(linkMesh);
 
-    function addLine(fromId, toId) {
-      var from = visiblePoints.get(fromId);
-      var to = visiblePoints.get(toId);
-
-      if (!from || !to) return;
+    function addLine(from, to) {
       var dx = from.x - to.x;
       var dy = from.y - to.y;
       var distS = dx * dx + dy * dy;
       if (distS > maxLength) return;
+      if (jsPos.length > max/2) return;
 
       jsPos.push(from.x, from.y, 0, to.x, to.y, 0);
       jsColors.push(1, 1, 1, 1, 1, 1); // /*from.x / r + 0.5, from.y / r + 0.5, 0.5, to.x / r + 0.5, to.y / r + 0.5, 0.5*/)

@@ -30,20 +30,46 @@ export function init() {
     model.groups = new Int16Array(g);
     bus.fire('groups-ready');
   });
-
-  request(config.dataUrl + 'links.bin', {responseType: 'arraybuffer'}).then(function(l) {
-    model.links = parseLinks(l);
-    bus.fire('links-ready');
-  });
+  request(config.dataUrl + 'tree/positions-s.yt.2d.bin', {responseType: 'arraybuffer'}).then(function(buffer) {
+    model.positions = new Int32Array(buffer);
+  }).then(function() {
+    request(config.dataUrl + 'links.bin', {responseType: 'arraybuffer'}).then(function(l) {
+      model.links = parseLinks(l);
+      bus.fire('links-ready');
+    });
+  })
 }
 
-export function forEachLink(nodeId, callback) {
+export function getPosition(nodeId) {
+  var idx = nodeId * 4;
+  if (idx > model.positions.length) throw new Error('impossible');
+  var pos = {
+    x: model.positions[idx],
+    y: model.positions[idx + 1]
+  }
+
+  return pos;
+}
+
+export function forEachOutLink(nodeId, callback) {
   if (!model.links) return
 
   var outLinks = model.links.get(nodeId);
   if (!outLinks) return;
 
   outLinks.forEach(callback);
+}
+
+export function forEachLink(callback) {
+  if (!model.links) return
+
+  model.links.forEach((outLinks, fromId) => {
+    var fromPos = getPosition(fromId);
+
+    outLinks.forEach(toId => {
+      callback(fromPos, getPosition(toId));
+    });
+  })
 }
 
 function parseLinks(linksBuffer) {
