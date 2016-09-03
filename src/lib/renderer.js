@@ -1,4 +1,4 @@
-import {forEachLink} from '../models/getNativeModel.js';
+import {forEachLink, forEachOutLink, getPosition} from '../models/getNativeModel.js';
 
 var THREE = require('three');
 var createQuadTree = require('d3-quadtree').quadtree;
@@ -27,7 +27,7 @@ function createRenderer(container, globalTree) {
   var uniforms;
   var currentChunks = new Map();
   var visiblePoints = new Map();
-  var linkMesh;
+  var linkMesh, highlightMesh;
 
   var tree; // rendered points quad tree, for hit test.
   var lastHover;
@@ -109,6 +109,46 @@ function createRenderer(container, globalTree) {
     api.fire('hover', undefined);
   }
 
+  function highlight(nodeId) {
+    var jsPos = [];
+    var jsColors = [];
+    var from = getPosition(nodeId);
+
+    forEachOutLink(nodeId, (outLink) => {
+      addLine(from, getPosition(outLink));
+    });
+
+    var positions = new Float32Array(jsPos);
+    var colors = new Float32Array(jsColors);
+
+    var geometry = new THREE.BufferGeometry();
+    var material = new THREE.LineBasicMaterial({
+      vertexColors: THREE.VertexColors,
+      blending: THREE.AdditiveBlending,
+      opacity: 0.5,
+      transparent: true
+    });
+
+    geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.addAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    geometry.computeBoundingSphere();
+
+    if (highlightMesh) {
+      scene.remove(highlightMesh);
+      highlightMesh.geometry.dispose();
+    }
+    highlightMesh = new THREE.LineSegments( geometry, material );
+
+    scene.add(highlightMesh);
+    needsUpdate = true;
+
+    function addLine(from, to) {
+      jsPos.push(from.x, from.y, 0, to.x, to.y, 0);
+      jsColors.push(0, 1, 1, 0, 1, 1); // /*from.x / r + 0.5, from.y / r + 0.5, 0.5, to.x / r + 0.5, to.y / r + 0.5, 0.5*/)
+    }
+  }
+
   function onMouseMove(e) {
     if (!tree) return;
 
@@ -126,8 +166,12 @@ function createRenderer(container, globalTree) {
           y: e.clientY
         }
       }, dat)
-      console.log(+new Date(), 'hover fire', dat)
-      api.fire('hover', hoverEvent);
+
+      if (dat) {
+        highlight(dat.id);
+      }
+
+      //api.fire('hover', hoverEvent);
       lastHover = dat;
     }
   }
@@ -321,10 +365,9 @@ function createRenderer(container, globalTree) {
   function renderLinks() {
     var jsPos = [];
     var jsColors = [];
-    var width = (visibleRect.right - visibleRect.left);
     var max = 16868928;
 
-    var maxLength = 300;
+    var maxLength = 500;
     maxLength *= maxLength;
 
     forEachLink(addLine);
@@ -349,7 +392,6 @@ function createRenderer(container, globalTree) {
       scene.remove(linkMesh);
       linkMesh.geometry.dispose();
     }
-    console.log(jsPos.length);
     linkMesh = new THREE.Line(geometry, material, THREE.LinePieces);
 
     scene.add(linkMesh);
