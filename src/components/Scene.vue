@@ -51,8 +51,6 @@ export default {
       this.renderer.on('hover', debounce(onHover, 100));
 
       function onHover(p) {
-        console.log(+new Date(), 'hover handler', p)
-
         if (!p || typeof p.id === 'undefined') {
           self.tooltip = null;
           return;
